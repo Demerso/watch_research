@@ -24,8 +24,8 @@ class Subject(object):
     def builder(path: p):
         return Subject.__Builder(path)
 
-    def plot_qflow(self, output: p | None = None):
-        if self.path is None or self.heart_seq is None or self.heart_coords is None or self.brain_seq is None or self.brain_coords is None: return
+    def get_qflow(self) -> pd.DataFrame | None:
+        if self.path is None or self.heart_seq is None or self.heart_coords is None or self.brain_seq is None or self.brain_coords is None: return None
         self._heart_file = next(filter(lambda x: re.search(fr"{self.heart_seq}.*ph.*\.nii\.gz", x.name), self.path.iterdir()))
         self._brain_file = next(filter(lambda x: re.search(fr"{self.brain_seq}.*ph.*\.nii\.gz", x.name), self.path.iterdir()))
 
@@ -34,7 +34,14 @@ class Subject(object):
         data = pd.DataFrame({
             'heart': heart_img.get_fdata()[self.heart_coords[0], self.heart_coords[1], 0, :],
             'brain': brain_img.get_fdata()[self.brain_coords[0], self.brain_coords[1], 0, :]
-        }).melt(var_name="area", value_name="value")
+        })
+        return data
+
+    def plot_qflow(self, output: p | None = None):
+        if self.path is None or self.heart_seq is None or self.heart_coords is None or self.brain_seq is None or self.brain_coords is None: return
+        data = self.get_qflow()
+        if data is None: return
+        data.melt(var_name="area", value_name="value")
         g = sns.FacetGrid(data, col="area", aspect=(1 + 5 ** 0.5) / 2)  # type: ignore
         g.figure.suptitle(f"{self.path.name} qflow")
         g.map(plt.plot, "value")
